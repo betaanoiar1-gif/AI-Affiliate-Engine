@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+from core.cache import TTLCache
 from core.domain import Signal
 from core.reliability import retry
 from core.security import validate_public_url
@@ -22,15 +23,25 @@ def _signal(source: str, title: str, *, momentum: float = 50.0, intent: float = 
 class HackerNewsProvider:
     """Official public Hacker News Firebase API; no key is required."""
 
-    def __init__(self, timeout: float = 10.0):
+    def __init__(self, timeout: float = 10.0, cache: TTLCache | None = None, cache_ttl: float = 120.0):
         self.timeout = timeout
+        self.cache = cache
+        self.cache_ttl = max(0.0, cache_ttl)
 
     def _get(self, url: str) -> Any:
+        key = TTLCache.key("hn", url)
+        if self.cache:
+            cached = self.cache.get(key)
+            if cached is not None:
+                return cached
         def call():
             response = httpx.get(url, timeout=self.timeout, follow_redirects=False)
             response.raise_for_status()
             return response.json()
-        return retry(call, attempts=2)
+        data = retry(call, attempts=2)
+        if self.cache:
+            self.cache.set(key, data, self.cache_ttl)
+        return data
 
     def signals(self, *, limit: int = 30) -> list[Signal]:
         ids = self._get(f"{HN_BASE}/topstories.json")[: max(1, min(limit, 100))]
@@ -51,18 +62,25 @@ class HackerNewsProvider:
 class PublicRSSProvider:
     """RSS/Atom adapter for Google Trends, Reddit, YouTube channels and publisher feeds."""
 
-    def __init__(self, feed_url: str, source: str = "rss", timeout: float = 10.0):
+    def __init__(self, feed_url: str, source: str = "rss", timeout: float = 10.0, cache: TTLCache | None = None, cache_ttl: float = 300.0):
         self.feed_url = validate_public_url(feed_url)
         self.source = source
         self.timeout = timeout
+        self.cache = cache
+        self.cache_ttl = max(0.0, cache_ttl)
 
     def signals(self, *, limit: int = 50) -> list[Signal]:
-        def call():
-            response = httpx.get(self.feed_url, timeout=self.timeout, follow_redirects=False)
-            response.raise_for_status()
-            return response.content
-        raw = retry(call, attempts=2)
-        text = raw.decode("utf-8", errors="replace")
+        key = TTLCache.key("rss", self.feed_url)
+        if self.cache:
+            cached = self.cache.get(key)
+            if cached is not None:
+                raw = cached.encode("utf-8")
+            else:
+                raw = self._fetch()
+                self.cache.set(key, raw.decode("utf-8", errors="replace"), self.cache_ttl)
+        else:
+            raw = self._fetch()
+        text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
         titles = re.findall(r"<title(?:\s[^>]*)?>(.*?)</title>", text, flags=re.I | re.S)
         result: list[Signal] = []
         for title in titles[1:limit + 1]:
@@ -70,6 +88,13 @@ class PublicRSSProvider:
             if clean:
                 result.append(_signal(self.source, clean))
         return result
+
+    def _fetch(self) -> bytes:
+        def call():
+            response = httpx.get(self.feed_url, timeout=self.timeout, follow_redirects=False)
+            response.raise_for_status()
+            return response.content
+        return retry(call, attempts=2)
 
 
 def default_public_feeds() -> dict[str, str]:

@@ -10,13 +10,15 @@ from core.compliance import ComplianceEngine
 from core.learning import LearningEngine, LearningObservation
 from core.security import validate_public_url
 from core.content import validate_content
+from core.store import SQLiteStore
 from integrations.demo import TemplateAIProvider, DryRunPublisher
 from core.orchestration import AutonomousEngine
 
-app = FastAPI(title="AI Affiliate Engine", version="0.3.0")
+app = FastAPI(title="AI Affiliate Engine", version="0.4.0")
 policy = PolicyEngine(settings.mode, settings.max_daily_publications)
 compliance = ComplianceEngine(settings.mode, settings.kill_switch, settings.max_daily_publications)
 learning = LearningEngine()
+store = SQLiteStore()
 
 class ScoreRequest(BaseModel):
     offer: Offer
@@ -52,9 +54,19 @@ class LearningRequest(BaseModel):
 def health():
     return {"status": "ok", "mode": settings.mode.value, "kill_switch": settings.kill_switch, "version": app.version}
 
+@app.get("/api/v1/dashboard/overview")
+def dashboard_overview():
+    return {
+        "system": {"mode": settings.mode.value, "kill_switch": settings.kill_switch, "version": app.version},
+        "storage": store.stats(),
+        "learning": learning.calibration(),
+        "publishing": {"enabled": settings.mode != RunMode.SIMULATION, "daily_limit": settings.max_daily_publications},
+        "providers": {"ai": "adapter-based", "affiliate": "adapter-based", "trends": "operator-configured"},
+    }
+
 @app.get("/api/v1/capabilities")
 def capabilities():
-    return {"modules": ["research", "offers", "scoring", "content", "simulation", "experiments", "attribution", "learning", "policies", "analytics"], "publishing": settings.mode != RunMode.SIMULATION, "ai_provider": "adapter-based", "affiliate_provider": "adapter-based"}
+    return {"modules": ["research", "offers", "scoring", "content", "simulation", "experiments", "attribution", "learning", "policies", "analytics", "persistence"], "publishing": settings.mode != RunMode.SIMULATION, "ai_provider": "adapter-based", "affiliate_provider": "adapter-based"}
 
 @app.post("/api/v1/opportunities/score")
 def score(request: ScoreRequest):

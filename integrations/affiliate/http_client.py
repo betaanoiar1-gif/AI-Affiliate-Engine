@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
 import httpx
-from core.reliability import retry_call
+from core.reliability import retry
 from core.security import validate_public_url
 
 
@@ -21,4 +21,4 @@ def get_json(url: str, *, headers: dict[str, str] | None = None, params: dict[st
         if not isinstance(data, dict):
             raise ProviderHTTPError("provider response must be a JSON object")
         return data
-    return retry_call(call, attempts=3)
+    return retry(call, attempts=3)

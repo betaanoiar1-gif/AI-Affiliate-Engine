@@ -22,7 +22,7 @@ class AIRouter:
     """OpenAI-compatible router with per-provider keys, retries, JSON fallback and free-first ordering."""
     def __init__(self, models: list[AIModel] | None = None):
         self._explicit_models = models is not None
-        self.models = models or self._from_env()
+        self.models = models if models is not None else self._from_env()
         self.spent = 0.0
 
     def _from_env(self) -> list[AIModel]:

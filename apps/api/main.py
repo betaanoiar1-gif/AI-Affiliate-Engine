@@ -24,7 +24,7 @@ from integrations.affiliate.openaffiliate import OpenAffiliateClient
 from core.orchestration import AutonomousEngine
 from datetime import datetime, timezone
 
-app = FastAPI(title="AI Affiliate Engine", version="0.9.0")
+app = FastAPI(title="AI Affiliate Engine", version="0.9.1")
 policy = PolicyEngine(settings.mode, settings.max_daily_publications)
 compliance = ComplianceEngine(settings.mode, settings.kill_switch, settings.max_daily_publications)
 learning = LearningEngine(); store = SQLiteStore(); evolution = StrategyEvolutionEngine(); tools = ToolRegistry()
@@ -42,12 +42,13 @@ class StrategyRequest(BaseModel): hook: str; angle: str; format: str; audience: 
 class StrategyObservation(BaseModel): fingerprint: str; exposures: int = Field(ge=0); clicks: int = Field(ge=0); conversions: int = Field(ge=0); revenue: float = Field(ge=0); failure: bool = False
 class AttributionRequest(BaseModel): rows: list[dict]
 class ToolSelectionRequest(BaseModel): task: str = Field(min_length=1, max_length=300); category: str | None = None; credentials: bool | None = None
+class ToolHealthRequest(BaseModel): cooldown_seconds: float = Field(default=30.0, ge=0)
 class MultiTouchRequest(BaseModel): touches: list[dict]; method: str = "last_touch"; half_life: float = Field(default=7.0, gt=0)
 class AnomalyRequest(BaseModel): metrics: dict[str, float]; baselines: dict[str, float]; ratio_threshold: float = Field(default=2.5, gt=1)
 class EconomicsRequest(BaseModel): commission: float = Field(ge=0); refunds: float = Field(default=0, ge=0); chargebacks: float = Field(default=0, ge=0); traffic_cost: float = Field(default=0, ge=0); tool_cost: float = Field(default=0, ge=0); opportunity_cost: float = Field(default=0, ge=0); failure_probability: float = Field(default=0, ge=0, le=1)
 class LifecycleRequest(BaseModel): current: OfferLifecycle; target: OfferLifecycle
 class PortfolioRequest(BaseModel): expected_values: dict[str, float]; buckets: dict[str, str]; exploration_floor: float = Field(default=0.10, ge=0, le=1)
-class SafetyRequest(BaseModel): scopes: list[str] = []
+class SafetyRequest(BaseModel): scopes: list[str] = Field(default_factory=list)
 class ProvenanceRequest(BaseModel): source: str; record_id: str = ""; freshness: float = Field(default=1, ge=0, le=1); completeness: float = Field(default=1, ge=0, le=1); consistency: float = Field(default=1, ge=0, le=1); source_reliability: float = Field(default=1, ge=0, le=1)
 class SaturationRequest(BaseModel): trend_strength: float = Field(ge=0, le=100); competition: float = Field(ge=0, le=100); content_saturation: float = Field(ge=0, le=100); offer_quality: float = Field(ge=0, le=100)
 class FatigueRequest(BaseModel): recent_exposures: int = Field(ge=0); recent_engagement_rate: float = Field(ge=0); baseline_engagement_rate: float = Field(gt=0); days_since_refresh: float = Field(ge=0)
@@ -64,8 +65,16 @@ def free_tools(category:str|None=None,exclude_ai:bool=False): return {"policy":"
 def tool_registry(): return {"tools":tools.snapshot()}
 @app.post("/api/v1/tools/select")
 def tool_select(request:ToolSelectionRequest):
-    try: return tools.select(request.task,category=request.category,credentials=request.credentials)
+    try: return tools.select(request.task,category=request.category,credentials=request.credentials).__dict__
     except RuntimeError as exc: raise HTTPException(status_code=503,detail=str(exc))
+@app.post("/api/v1/tools/{tool_id}/success")
+def tool_success(tool_id:str):
+    try: tools.record_success(tool_id); return {"tool":tool_id,"status":"success","health":tools.snapshot()}
+    except KeyError: raise HTTPException(status_code=404,detail="unknown tool")
+@app.post("/api/v1/tools/{tool_id}/failure")
+def tool_failure(tool_id:str,request:ToolHealthRequest):
+    try: tools.record_failure(tool_id,cooldown_seconds=request.cooldown_seconds); return {"tool":tool_id,"status":"failure","health":tools.snapshot()}
+    except KeyError: raise HTTPException(status_code=404,detail="unknown tool")
 @app.get("/api/v1/tools/fallback/{tool_id}")
 def tool_fallback(tool_id:str):
     try: return {"tool":tool_id,"chain":fallback_chain(tool_id)}

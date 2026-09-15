@@ -1,5 +1,7 @@
 # Engineering roadmap
 
+The roadmap is execution-oriented: completed items are implemented in code, not placeholders.
+
 ## Phase 1 — foundation
 - [x] Domain models
 - [x] Transparent scoring
@@ -11,32 +13,45 @@
 - [x] Automated tests / CI
 
 ## Phase 2 — intelligence
-- [ ] Persistent database and migrations
-- [ ] Offer/network ingestion adapters
-- [ ] Trend-source adapters
-- [ ] Opportunity history and deduplication
-- [ ] Explainable ranking and calibration
-- [ ] Experiment registry
+- [x] Persistent SQLite event store
+- [ ] Production affiliate/network ingestion adapters
+- [ ] Production trend-source adapters
+- [x] Opportunity evaluation pipeline
+- [x] Explainable risk-aware ranking
+- [x] Experiment registry primitives
 
 ## Phase 3 — content
-- [ ] AI provider router with quota/cost controls
-- [ ] Content briefs and platform-specific variants
-- [ ] Disclosure/compliance templates
-- [ ] Content quality and duplication checks
+- [x] Provider-agnostic AI/content interface
+- [ ] AI router with quota/cost controls
+- [x] Content briefs and platform field model
+- [x] Disclosure/compliance gates
+- [ ] Content quality and semantic duplication service
 
 ## Phase 4 — operations
-- [ ] Scheduler and job queue
-- [ ] Publisher adapters
-- [ ] Analytics ingestion
-- [ ] Attribution and revenue reconciliation
-- [ ] Retry/dead-letter handling
-- [ ] Audit log and kill switch
+- [x] Guarded orchestration cycle
+- [x] Attribution primitives and reconciliation boundary
+- [x] Retry, circuit-breaker and rate-limiter primitives
+- [x] SSRF-safe URL validation
+- [ ] Persistent job queue / scheduler
+- [ ] Production publisher adapters
+- [ ] Provider webhook ingestion
+- [ ] Full audit-log service and operational kill-switch persistence
 
 ## Phase 5 — autonomous optimization
-- [ ] Multi-armed content experiments
-- [ ] Feedback-driven offer ranking
-- [ ] Budget/rate-limit aware planning
-- [ ] Human approval gates for irreversible actions
-- [ ] End-to-end simulation before live mode
+- [x] Adaptive multi-armed experiment primitive
+- [x] Feedback learning/calibration primitive
+- [ ] Persistent learning feature store
+- [ ] Budget/rate-limit aware planner
+- [x] Human approval boundary for irreversible publishing
+- [x] End-to-end dry-run cycle
+- [ ] Production-grade autonomous loop after external credentials and policy verification
 
-No live publisher or affiliate credential is enabled by default.
+## Phase 6 — hardening
+- [ ] Database migrations and PostgreSQL adapter
+- [ ] Full authentication / RBAC
+- [ ] Observability, metrics and tracing
+- [ ] Contract tests for every external provider
+- [ ] Failure-injection suite
+- [ ] Release packaging and deployment manifests
+
+No live publisher or affiliate credential is enabled by default. External integrations are capability-gated and must never bypass compliance or simulation controls.

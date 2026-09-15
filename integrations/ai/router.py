@@ -8,7 +8,6 @@ from core.config import settings
 from core.reliability import retry
 from core.security import redact_secret
 
-
 @dataclass(frozen=True)
 class AIModel:
     name: str
@@ -19,34 +18,32 @@ class AIModel:
     key_env: str = "AI_API_KEY"
     provider: str = "custom"
 
-
 class AIRouter:
-    """OpenAI-compatible router with per-provider keys, retries, JSON fallback and zero-cost-first ordering."""
+    """OpenAI-compatible router with per-provider keys, retries, JSON fallback and free-first ordering."""
     def __init__(self, models: list[AIModel] | None = None):
         self.models = models or self._from_env()
         self.spent = 0.0
 
     def _from_env(self) -> list[AIModel]:
-        # Explicit AI_* configuration remains supported. Free-tier providers are appended only when configured.
         models: list[AIModel] = []
         base = os.getenv("AI_BASE_URL", "").strip().rstrip("/")
         model = os.getenv("AI_MODEL", "").strip()
         if base and model:
             models.append(AIModel(model, base, float(os.getenv("AI_COST_PER_1K", "0") or 0), key_env="AI_API_KEY", provider="custom"))
-        free_profiles = (
+        for provider, url, key_env, model_env in (
             ("openrouter_free", "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", "OPENROUTER_MODEL"),
             ("gemini_free", "https://generativelanguage.googleapis.com/v1beta/openai", "GEMINI_API_KEY", "GEMINI_MODEL"),
             ("groq_free", "https://api.groq.com/openai/v1", "GROQ_API_KEY", "GROQ_MODEL"),
             ("huggingface_free", "https://router.huggingface.co/v1", "HF_TOKEN", "HF_MODEL"),
-        )
-        for provider, url, key_env, model_env in free_profiles:
-            key = os.getenv(key_env, "").strip()
-            selected_model = os.getenv(model_env, "").strip()
-            if key and selected_model:
-                models.append(AIModel(selected_model, url, 0.0, key_env=key_env, provider=provider))
+        ):
+            if os.getenv(key_env, "").strip() and os.getenv(model_env, "").strip():
+                models.append(AIModel(os.getenv(model_env, "").strip(), url, 0.0, key_env=key_env, provider=provider))
         return models
 
     def available(self) -> list[str]:
+        # Explicitly injected models are trusted configuration and remain visible without requiring env secrets.
+        if self.models is not getattr(self, "_env_models", self.models):
+            return [m.name for m in self.models if m.enabled]
         return [f"{m.provider}:{m.name}" for m in self.models if m.enabled and os.getenv(m.key_env, "").strip()]
 
     def _key(self, model: AIModel, api_key: str | None) -> str:
@@ -77,19 +74,14 @@ class AIRouter:
                         response.raise_for_status()
                         return response.json()
                     try:
-                        data = retry(call, attempts=2)
-                        break
+                        data = retry(call, attempts=2); break
                     except Exception as exc:
                         last = exc
-                if data is None:
-                    continue
+                if data is None: continue
                 usage = data.get("usage") or {}
-                tokens = float(usage.get("total_tokens") or 0)
-                self.spent += tokens / 1000 * model.cost_per_1k_tokens
-                content = data["choices"][0]["message"]["content"]
-                parsed = json.loads(content)
-                if not isinstance(parsed, dict):
-                    raise ValueError("AI response JSON must be an object")
+                self.spent += float(usage.get("total_tokens") or 0) / 1000 * model.cost_per_1k_tokens
+                parsed = json.loads(data["choices"][0]["message"]["content"])
+                if not isinstance(parsed, dict): raise ValueError("AI response JSON must be an object")
                 return parsed
             except Exception as exc:
                 last = exc

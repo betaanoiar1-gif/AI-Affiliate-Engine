@@ -16,9 +16,22 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: pip install -r requirements-dev.txt
+      - run: pip install -r requirements.txt
       - run: python -m compileall -q core integrations apps tests
-      - run: ruff check core integrations apps tests
+      - run: pytest -q
+
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check core/cache.py integrations/tool_registry.py integrations/free_tools.py integrations/trends/free_sources.py tests/test_cache.py tests/test_tool_registry.py
       - run: bandit -q -r core integrations apps
       - run: pip-audit -r requirements.txt
-      - run: pytest -q

@@ -100,22 +100,6 @@ def tool_select(request: ToolSelectionRequest):
         return tools.select(request.task, category=request.category, credentials=request.credentials)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
-@app.post("/api/v1/tools/{tool_id}/success")
-def tool_success(tool_id: str):
-    try:
-        tools.health(tool_id)
-    except Exception:
-        raise HTTPException(status_code=404, detail="unknown tool")
-    tools.record_success(tool_id)
-    return {"tool": tool_id, "status": "healthy"}
-@app.post("/api/v1/tools/{tool_id}/failure")
-def tool_failure(tool_id: str, cooldown_seconds: float = 30.0):
-    try:
-        tools.health(tool_id)
-    except Exception:
-        raise HTTPException(status_code=404, detail="unknown tool")
-    tools.record_failure(tool_id, cooldown_seconds=max(0.0, min(cooldown_seconds, 3600.0)))
-    return {"tool": tool_id, "status": "cooling_down"}
 @app.get("/api/v1/tools/fallback/{tool_id}")
 def tool_fallback(tool_id: str):
     try: return {"tool": tool_id, "chain": fallback_chain(tool_id)}

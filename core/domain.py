@@ -46,6 +46,8 @@ class Opportunity(BaseModel):
     reasons: list[str]
     risks: list[str]
     recommended: bool
+    confidence: float = Field(default=0.0, ge=0, le=1)
+    breakdown: dict[str, float] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utcnow)
 
 

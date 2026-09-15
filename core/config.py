@@ -11,6 +11,20 @@ def _bool(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _int(name: str, default: int, minimum: int = 0) -> int:
+    try:
+        return max(minimum, int(os.getenv(name, str(default))))
+    except (TypeError, ValueError):
+        return default
+
+
+def _float(name: str, default: float, minimum: float = 0.0) -> float:
+    try:
+        return max(minimum, float(os.getenv(name, str(default))))
+    except (TypeError, ValueError):
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     mode: RunMode = RunMode.SIMULATION
@@ -22,18 +36,19 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        raw_mode = os.getenv("AFFILIATE_RUN_MODE", RunMode.SIMULATION.value).lower()
+        raw_mode = os.getenv("AFFILIATE_RUN_MODE", RunMode.SIMULATION.value).strip().lower()
         try:
             mode = RunMode(raw_mode)
         except ValueError:
             mode = RunMode.SIMULATION
+        country = os.getenv("DEFAULT_COUNTRY", "DZ").strip().upper() or "DZ"
         return cls(
             mode=mode,
-            max_daily_publications=max(0, int(os.getenv("MAX_DAILY_PUBLICATIONS", "3"))),
+            max_daily_publications=_int("MAX_DAILY_PUBLICATIONS", 3),
             kill_switch=_bool("KILL_SWITCH", False),
-            default_country=os.getenv("DEFAULT_COUNTRY", "DZ").upper(),
-            ai_monthly_budget=max(0.0, float(os.getenv("AI_MONTHLY_BUDGET", "0"))),
-            request_timeout_seconds=max(1.0, float(os.getenv("REQUEST_TIMEOUT_SECONDS", "15"))),
+            default_country=country,
+            ai_monthly_budget=_float("AI_MONTHLY_BUDGET", 0.0),
+            request_timeout_seconds=_float("REQUEST_TIMEOUT_SECONDS", 15.0, 1.0),
         )
 
 

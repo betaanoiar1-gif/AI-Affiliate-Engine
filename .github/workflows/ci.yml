@@ -6,7 +6,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       PYTHONPATH: .
     steps:
@@ -16,6 +16,9 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
       - run: python -m compileall -q core integrations apps tests
+      - run: ruff check core integrations apps tests
+      - run: bandit -q -r core integrations apps
+      - run: pip-audit -r requirements.txt
       - run: pytest -q

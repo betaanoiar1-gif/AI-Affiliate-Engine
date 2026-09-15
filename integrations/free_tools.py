@@ -35,28 +35,28 @@ FREE_FIRST_CATALOG: tuple[ToolSpec, ...] = (
     ToolSpec("wikipedia_api", "research", "public REST", "free", False, True, "Public encyclopedia metadata and page signals", "high", ("rss",)),
 
     # Web acquisition / extraction
-    ToolSpec("httpx", "web", "Python HTTP client", "free", False, True, "Fast public HTTP acquisition", "high", ("playwright",)),
+    ToolSpec("httpx", "web", "Python HTTP client", "free", False, False, "Fast public HTTP acquisition", "high", ("playwright",)),
     ToolSpec("beautifulsoup4", "web", "HTML parser", "free", False, False, "Deterministic HTML extraction after permitted fetch", "high", ("trafilatura",)),
     ToolSpec("trafilatura", "web", "content extractor", "free", False, False, "Article/main-content extraction", "high", ("beautifulsoup4",)),
-    ToolSpec("playwright", "browser", "local browser", "free", False, True, "Browser automation for permitted public workflows", "high", ("crawlee",)),
-    ToolSpec("crawlee", "browser", "HTTP/browser crawler", "free", False, True, "Resilient crawling using HTTP or browsers", "high", ("playwright", "rss")),
+    ToolSpec("playwright", "browser", "local browser", "free", False, False, "Browser automation for permitted public workflows", "high", ("crawlee",)),
+    ToolSpec("crawlee", "browser", "HTTP/browser crawler", "free", False, False, "Resilient crawling using HTTP or browsers", "high", ("playwright", "rss")),
 
     # Media / content utilities
-    ToolSpec("ffmpeg", "media", "local CLI", "free", False, True, "Video/audio conversion, muxing and normalization", "high"),
-    ToolSpec("yt_dlp", "media", "CLI/library", "free", False, True, "Metadata/media extraction where platform terms permit", "high", ("youtube_rss",)),
+    ToolSpec("ffmpeg", "media", "local CLI", "free", False, False, "Video/audio conversion, muxing and normalization", "high"),
+    ToolSpec("yt_dlp", "media", "CLI/library", "free", False, False, "Metadata/media extraction where platform terms permit", "high", ("youtube_rss",)),
     ToolSpec("pillow", "media", "Python library", "free", False, False, "Image inspection, resizing and transformations", "high"),
 
     # Storage / analytics / local infrastructure
-    ToolSpec("sqlite", "storage", "embedded database", "free", False, True, "Durable operational state and event storage", "high"),
-    ToolSpec("duckdb", "analytics", "embedded analytical database", "free", False, True, "Local analytical queries and batch reporting", "high", ("sqlite",)),
-    ToolSpec("parquet", "analytics", "columnar file format", "free", False, True, "Portable analytical snapshots", "high", ("sqlite",)),
-    ToolSpec("python_cache", "infrastructure", "local cache", "free", False, True, "Avoid repeated network calls and quota waste", "high"),
+    ToolSpec("sqlite", "storage", "embedded database", "free", False, False, "Durable operational state and event storage", "high"),
+    ToolSpec("duckdb", "analytics", "embedded analytical database", "free", False, False, "Local analytical queries and batch reporting", "high", ("sqlite",)),
+    ToolSpec("parquet", "analytics", "columnar file format", "free", False, False, "Portable analytical snapshots", "high", ("sqlite",)),
+    ToolSpec("python_cache", "infrastructure", "local cache", "free", False, False, "Avoid repeated network calls and quota waste", "high"),
 
     # Observability / quality / security
-    ToolSpec("pytest", "quality", "local test runner", "free", False, True, "Automated regression and integration testing", "high"),
-    ToolSpec("ruff", "quality", "local linter/formatter", "free", False, True, "Fast Python linting and formatting", "high"),
-    ToolSpec("bandit", "security", "local SAST", "free", False, True, "Python security checks", "high"),
-    ToolSpec("pip_audit", "security", "dependency scanner", "free", False, True, "Known-vulnerability checks for Python dependencies", "high"),
+    ToolSpec("pytest", "quality", "local test runner", "free", False, False, "Automated regression and integration testing", "high"),
+    ToolSpec("ruff", "quality", "local linter/formatter", "free", False, False, "Fast Python linting and formatting", "high"),
+    ToolSpec("bandit", "security", "local SAST", "free", False, False, "Python security checks", "high"),
+    ToolSpec("pip_audit", "security", "dependency scanner", "free", False, False, "Known-vulnerability checks for Python dependencies", "high"),
 
     # Affiliate / platform adapters
     ToolSpec("awin", "affiliate", "official API/feed", "credential-required", True, True, "Affiliate offers, feeds and publisher data when account access exists", "high", ("partnerstack",)),

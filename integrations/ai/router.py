@@ -21,6 +21,7 @@ class AIModel:
 class AIRouter:
     """OpenAI-compatible router with per-provider keys, retries, JSON fallback and free-first ordering."""
     def __init__(self, models: list[AIModel] | None = None):
+        self._explicit_models = models is not None
         self.models = models or self._from_env()
         self.spent = 0.0
 
@@ -36,15 +37,16 @@ class AIRouter:
             ("groq_free", "https://api.groq.com/openai/v1", "GROQ_API_KEY", "GROQ_MODEL"),
             ("huggingface_free", "https://router.huggingface.co/v1", "HF_TOKEN", "HF_MODEL"),
         ):
-            if os.getenv(key_env, "").strip() and os.getenv(model_env, "").strip():
-                models.append(AIModel(os.getenv(model_env, "").strip(), url, 0.0, key_env=key_env, provider=provider))
+            key = os.getenv(key_env, "").strip()
+            selected_model = os.getenv(model_env, "").strip()
+            if key and selected_model:
+                models.append(AIModel(selected_model, url, 0.0, key_env=key_env, provider=provider))
         return models
 
     def available(self) -> list[str]:
-        # Explicitly injected models are trusted configuration and remain visible without requiring env secrets.
-        if self.models is not getattr(self, "_env_models", self.models):
+        if self._explicit_models:
             return [m.name for m in self.models if m.enabled]
-        return [f"{m.provider}:{m.name}" for m in self.models if m.enabled and os.getenv(m.key_env, "").strip()]
+        return [f"{m.provider}:{m.name}" for m in self.models if m.enabled]
 
     def _key(self, model: AIModel, api_key: str | None) -> str:
         key = api_key or os.getenv(model.key_env, "")
@@ -77,11 +79,13 @@ class AIRouter:
                         data = retry(call, attempts=2); break
                     except Exception as exc:
                         last = exc
-                if data is None: continue
+                if data is None:
+                    continue
                 usage = data.get("usage") or {}
                 self.spent += float(usage.get("total_tokens") or 0) / 1000 * model.cost_per_1k_tokens
                 parsed = json.loads(data["choices"][0]["message"]["content"])
-                if not isinstance(parsed, dict): raise ValueError("AI response JSON must be an object")
+                if not isinstance(parsed, dict):
+                    raise ValueError("AI response JSON must be an object")
                 return parsed
             except Exception as exc:
                 last = exc

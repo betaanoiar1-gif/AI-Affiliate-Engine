@@ -15,17 +15,19 @@ from core.intelligence import TrendObservation, assess_opportunity, deduplicate_
 from core.evolution import StrategyEvolutionEngine, StrategyGene
 from core.analytics import aggregate_attribution, portfolio_summary
 from integrations.free_tools import catalog, fallback_chain
+from integrations.tool_registry import ToolRegistry
 from integrations.ai.model_discovery import list_free_openrouter_models
 from integrations.ai.router import AIRouter
 from integrations.demo import TemplateAIProvider, DryRunPublisher
 from core.orchestration import AutonomousEngine
 
-app = FastAPI(title="AI Affiliate Engine", version="0.7.0")
+app = FastAPI(title="AI Affiliate Engine", version="0.8.0")
 policy = PolicyEngine(settings.mode, settings.max_daily_publications)
 compliance = ComplianceEngine(settings.mode, settings.kill_switch, settings.max_daily_publications)
 learning = LearningEngine()
 store = SQLiteStore()
 evolution = StrategyEvolutionEngine()
+tools = ToolRegistry()
 
 class ScoreRequest(BaseModel):
     offer: Offer
@@ -72,19 +74,48 @@ class StrategyObservation(BaseModel):
     failure: bool = False
 class AttributionRequest(BaseModel):
     rows: list[dict]
+class ToolSelectionRequest(BaseModel):
+    task: str = Field(min_length=1, max_length=300)
+    category: str | None = None
+    credentials: bool | None = None
 
 @app.get("/health")
 def health():
     return {"status": "ok", "mode": settings.mode.value, "kill_switch": settings.kill_switch, "version": app.version}
 @app.get("/api/v1/dashboard/overview")
 def dashboard_overview():
-    return {"system": {"mode": settings.mode.value, "kill_switch": settings.kill_switch, "version": app.version}, "storage": store.stats(), "learning": learning.calibration(), "publishing": {"enabled": settings.mode != RunMode.SIMULATION, "daily_limit": settings.max_daily_publications}, "providers": {"ai": "free-first adapter router", "affiliate": "adapter-based", "trends": "free-first public sources"}, "evolution": {"strategies": len(evolution.records)}}
+    return {"system": {"mode": settings.mode.value, "kill_switch": settings.kill_switch, "version": app.version}, "storage": store.stats(), "learning": learning.calibration(), "publishing": {"enabled": settings.mode != RunMode.SIMULATION, "daily_limit": settings.max_daily_publications}, "providers": {"ai": "free-first adapter router", "affiliate": "adapter-based", "trends": "free-first public sources"}, "evolution": {"strategies": len(evolution.records)}, "tools": {"count": len(catalog()), "no_payment": len(catalog(only_no_payment=True, exclude_ai=True))}}
 @app.get("/api/v1/capabilities")
 def capabilities():
-    return {"modules": ["scoring", "research", "offers", "trends", "opportunities", "content", "simulation", "experiments", "attribution", "learning", "evolution", "policies", "analytics", "persistence", "free_tools"], "publishing": settings.mode != RunMode.SIMULATION, "ai_provider": "free-first adapter router", "affiliate_provider": "adapter-based"}
+    return {"modules": ["scoring", "research", "offers", "trends", "opportunities", "content", "simulation", "experiments", "attribution", "learning", "evolution", "policies", "analytics", "persistence", "free_tools", "tool_registry"], "publishing": settings.mode != RunMode.SIMULATION, "ai_provider": "free-first adapter router", "affiliate_provider": "adapter-based"}
 @app.get("/api/v1/tools/free")
-def free_tools(category: str | None = None):
-    return {"policy": "free-first; quotas and provider terms still apply", "tools": [x.__dict__ for x in catalog(category=category)], "no_payment_required": [x.__dict__ for x in catalog(category=category, only_no_payment=True)]}
+def free_tools(category: str | None = None, exclude_ai: bool = False):
+    return {"policy": "free-first; quotas and provider terms still apply", "tools": [x.__dict__ for x in catalog(category=category, exclude_ai=exclude_ai)], "no_payment_required": [x.__dict__ for x in catalog(category=category, only_no_payment=True, exclude_ai=exclude_ai)]}
+@app.get("/api/v1/tools/registry")
+def tool_registry():
+    return {"tools": tools.snapshot()}
+@app.post("/api/v1/tools/select")
+def tool_select(request: ToolSelectionRequest):
+    try:
+        return tools.select(request.task, category=request.category, credentials=request.credentials)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+@app.post("/api/v1/tools/{tool_id}/success")
+def tool_success(tool_id: str):
+    try:
+        tools.health(tool_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="unknown tool")
+    tools.record_success(tool_id)
+    return {"tool": tool_id, "status": "healthy"}
+@app.post("/api/v1/tools/{tool_id}/failure")
+def tool_failure(tool_id: str, cooldown_seconds: float = 30.0):
+    try:
+        tools.health(tool_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="unknown tool")
+    tools.record_failure(tool_id, cooldown_seconds=max(0.0, min(cooldown_seconds, 3600.0)))
+    return {"tool": tool_id, "status": "cooling_down"}
 @app.get("/api/v1/tools/fallback/{tool_id}")
 def tool_fallback(tool_id: str):
     try: return {"tool": tool_id, "chain": fallback_chain(tool_id)}

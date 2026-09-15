@@ -28,11 +28,11 @@ The important design choice is that the system is not a content generator. It is
 - Idempotent event/attribution writes prevent duplicate external events from becoming duplicate internal revenue.
 
 ## Research-informed architecture
-Current research supports several design principles used here: Awin exposes publisher performance and transaction-oriented APIs, making provider adapters more valuable than screen scraping; PartnerStack exposes marketplace/program APIs and webhooks; Google is testing a programmatic Trends API with multi-year, regional and interval data; and modern agent systems increasingly separate agent reasoning from durable execution. citeturn1search7turn0search1turn0search16turn1search6
+The design deliberately favors first-party/provider APIs over brittle scraping. Awin documents publisher performance and transaction-oriented APIs; PartnerStack exposes marketplace/program APIs; Google is testing a programmatic Trends API with multi-year, regional and interval data; and modern agent systems increasingly separate agent reasoning from durable execution.
 
-Affiliate disclosure is a first-class content/compliance concern. The FTC guidance says affiliate relationships should be disclosed clearly and conspicuously and close to the recommendation/link, and that disclosures should not be hidden in profiles or buried after the relevant content. citeturn0search0turn0search12
+Affiliate disclosure is a first-class content/compliance concern. The system therefore treats disclosure placement and eligibility as data and policy inputs rather than a final text afterthought.
 
-The system is deliberately designed to add provider adapters rather than couple the core to one network. Impact.com is another example of the direction of the ecosystem: its 2026 API catalog includes program/partner discovery, analytics, tracking links, webhooks and an MCP interface. citeturn1search2
+The adapter boundary also leaves room for newer partnership infrastructure. Impact.com, for example, documents program/partner discovery, analytics, tracking links, webhooks and an MCP interface in its 2026 API catalog.
 
 ## Architecture
 - `apps/api` — FastAPI API and operational endpoints

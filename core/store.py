@@ -60,5 +60,9 @@ class SQLiteStore:
         rows = self.connection.execute("SELECT * FROM events ORDER BY created_at DESC LIMIT ?", (max(1, min(limit, 1000)),)).fetchall()
         return [dict(r) for r in rows]
 
+    def stats(self) -> dict[str, int]:
+        tables = ("events", "opportunities", "offers", "signals", "content_plans")
+        return {table: int(self.connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]) for table in tables}
+
     def close(self) -> None:
         self.connection.close()

@@ -1,57 +1,37 @@
 # Engineering roadmap
 
-The roadmap is execution-oriented: completed items are implemented in code, not placeholders.
+## Completed engineering layers
+- [x] Domain models and transparent opportunity scoring
+- [x] Deterministic, scenario and Monte Carlo simulation lab
+- [x] Central policy/compliance gates and kill switch
+- [x] Persistent SQLite event/intelligence store
+- [x] Attribution and commission reconciliation primitives
+- [x] Experiment engine and feedback calibration
+- [x] Reliability primitives: retry, circuit breaker, rate limiter
+- [x] SSRF-aware URL validation and secret redaction
+- [x] Provider interfaces and dry-run adapters
+- [x] Awin publisher read adapter
+- [x] PartnerStack partner read adapter
+- [x] OpenAI-compatible cost-aware AI router
+- [x] Operator-configured RSS trend adapter
+- [x] FastAPI service and dashboard foundation
+- [x] Compile/test CI gate
 
-## Phase 1 — foundation
-- [x] Domain models
-- [x] Transparent scoring
-- [x] Deterministic simulation
-- [x] Central policy gates
-- [x] Provider interfaces
-- [x] Safe dry-run adapters
-- [x] API + dashboard skeleton
-- [x] Automated tests / CI
+## Next engineering layers
+- [ ] Offer ingestion service with normalization, deduplication and freshness TTL
+- [ ] Multi-source trend fusion, velocity, persistence, seasonality and saturation
+- [ ] Content factory with structured AI outputs, quality gates and duplicate detection
+- [ ] Experiment registry persistence and statistically safer promotion/retirement rules
+- [ ] End-to-end attribution IDs, webhook ingestion and revenue reconciliation
+- [ ] Scheduler/worker loop for discover → score → simulate → create → measure → learn
+- [ ] YouTube publisher adapter with explicit OAuth/approval and private-by-default safeguards
+- [ ] Provider health, quotas, observability and audit dashboards
+- [ ] Full API integration/security/failure-injection test suite
+- [ ] PostgreSQL deployment profile and migrations for larger workloads
 
-## Phase 2 — intelligence
-- [x] Persistent SQLite event store
-- [ ] Production affiliate/network ingestion adapters
-- [ ] Production trend-source adapters
-- [x] Opportunity evaluation pipeline
-- [x] Explainable risk-aware ranking
-- [x] Experiment registry primitives
+## Operating modes
+- `simulation`: default; no external publishing
+- `approval`: content can be prepared, irreversible actions require approval
+- `autonomous`: only for explicitly configured providers and after policy checks
 
-## Phase 3 — content
-- [x] Provider-agnostic AI/content interface
-- [ ] AI router with quota/cost controls
-- [x] Content briefs and platform field model
-- [x] Disclosure/compliance gates
-- [ ] Content quality and semantic duplication service
-
-## Phase 4 — operations
-- [x] Guarded orchestration cycle
-- [x] Attribution primitives and reconciliation boundary
-- [x] Retry, circuit-breaker and rate-limiter primitives
-- [x] SSRF-safe URL validation
-- [ ] Persistent job queue / scheduler
-- [ ] Production publisher adapters
-- [ ] Provider webhook ingestion
-- [ ] Full audit-log service and operational kill-switch persistence
-
-## Phase 5 — autonomous optimization
-- [x] Adaptive multi-armed experiment primitive
-- [x] Feedback learning/calibration primitive
-- [ ] Persistent learning feature store
-- [ ] Budget/rate-limit aware planner
-- [x] Human approval boundary for irreversible publishing
-- [x] End-to-end dry-run cycle
-- [ ] Production-grade autonomous loop after external credentials and policy verification
-
-## Phase 6 — hardening
-- [ ] Database migrations and PostgreSQL adapter
-- [ ] Full authentication / RBAC
-- [ ] Observability, metrics and tracing
-- [ ] Contract tests for every external provider
-- [ ] Failure-injection suite
-- [ ] Release packaging and deployment manifests
-
-No live publisher or affiliate credential is enabled by default. External integrations are capability-gated and must never bypass compliance or simulation controls.
+Real credentials, platform authorization, affiliate-program acceptance and provider-specific terms remain external prerequisites. The system must never represent synthetic simulation output as real performance.

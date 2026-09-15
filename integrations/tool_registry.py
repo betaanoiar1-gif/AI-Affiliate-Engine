@@ -36,7 +36,11 @@ class ToolRegistry:
     def __init__(self) -> None:
         self._health: dict[str, ToolHealth] = {}
 
+    def _validate(self, tool_id: str) -> ToolSpec:
+        return get_tool(tool_id)
+
     def health(self, tool_id: str) -> ToolHealth:
+        self._validate(tool_id)
         return self._health.setdefault(tool_id, ToolHealth())
 
     def record_success(self, tool_id: str) -> None:

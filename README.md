@@ -8,23 +8,23 @@ Provider-agnostic affiliate intelligence, experimentation, content planning and 
 This is a closed-loop decision system, not a content generator: evidence becomes a decision, decisions become experiments, experiments create measured outcomes, and outcomes alter future strategy selection.
 
 ## Free-first tool strategy
-The project now has a provider-neutral free-tool registry and fallback chains. The base stack avoids paid SaaS dependencies whenever a public API, RSS feed, open-source library, or free provider tier can do the job.
+The project has a provider-neutral registry and fallback chains. The base stack avoids paid SaaS dependencies whenever a public API, RSS feed, open-source library, or genuinely free-access path can do the job.
 
-### Research / trends
-- Hacker News official public API — no key; useful for technology/product demand signals.
-- Google Trends public RSS feeds — no paid API dependency for the base trend-discovery path.
-- Reddit RSS feeds — no API key for feed-based discovery where the feed is available and permitted.
-- YouTube/channel RSS where available — lightweight discovery fallback before spending API quota.
-- Generic RSS/Atom — universal fallback for publishers and niche sources.
-- Google Trends official API is kept as an optional future adapter because its current access is an alpha program rather than a universally open API.
+### Non-AI tools
+- **Trend/research:** Hacker News public API, Google Trends RSS, Reddit RSS, YouTube/channel RSS, generic RSS/Atom, public GitHub activity, Wikimedia/Wikipedia APIs where appropriate.
+- **Web acquisition:** httpx, BeautifulSoup, Trafilatura, Playwright and Crawlee for permitted public workflows. The system does not bypass access controls.
+- **Media:** FFmpeg, Pillow and yt-dlp for permitted processing/metadata workflows; platform terms and content rights remain mandatory gates.
+- **Data:** SQLite/WAL for operational state, DuckDB/Parquet as optional analytical storage formats, and a persistent TTL cache to reduce duplicate requests and quota consumption.
+- **Quality/security:** pytest, Ruff, Bandit and pip-audit are supported as the local quality/security layer; they are not runtime dependencies of the API.
+- **Affiliate/platform:** Awin and PartnerStack remain credential-required adapters; YouTube Data API is a free-tier/credentialed surface. They are never described as unlimited/free-for-everyone.
 
 ### AI
-The router is now free-first and supports separate credentials/models for OpenRouter, Gemini, Groq and Hugging Face, plus an explicit custom OpenAI-compatible fallback. OpenRouter free-model selection is discovered dynamically from its current catalog instead of hardcoding a model that may later stop being free.
+The AI router is separate from the non-AI tool layer and is free-first: OpenRouter, Gemini, Groq and Hugging Face can be configured with provider-specific credentials/models, with dynamic free-model discovery where supported. Free does **not** mean unlimited: quotas, model availability, provider terms and eligibility can change.
 
-Free does **not** mean unlimited: quotas, model availability, provider terms and eligibility can change. The system therefore treats free providers as interchangeable resources with fallback and budget controls.
+### Tool economy
+`Task → eligible tools → cost/credential filter → health → selection → fallback`
 
-### Browser / media
-Playwright and Crawlee are available as open-source automation/crawling choices. yt-dlp is available for permitted metadata/media workflows; platform terms and content rights remain mandatory gates.
+Temporary failures put a tool into a short cooldown instead of repeatedly hammering the same provider. This prevents one unavailable service from stopping the whole research loop and helps conserve free quotas.
 
 ## Intelligence layers
 - **Offer intelligence:** commission economics, recurring potential, AOV, cookie window, terms, countries and payout compatibility.
@@ -48,6 +48,8 @@ Playwright and Crawlee are available as open-source automation/crawling choices.
 - `/health`
 - `/api/v1/dashboard/overview`
 - `/api/v1/tools/free`
+- `/api/v1/tools/registry`
+- `/api/v1/tools/select`
 - `/api/v1/tools/fallback/{tool_id}`
 - `/api/v1/ai/free-models`
 - `/api/v1/ai/configured`

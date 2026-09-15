@@ -5,42 +5,56 @@ Provider-agnostic affiliate intelligence, experimentation, content planning and 
 ## Operating loop
 `Discover → Normalize → Score → Simulate → Select → Create → Experiment → Publish → Measure → Learn → Optimize → Evolve`
 
-The important design choice is that the system is not a content generator. It is a closed-loop decision system: evidence becomes a decision, decisions become experiments, experiments create measured outcomes, and measured outcomes alter future strategy selection.
+This is a closed-loop decision system, not a content generator: evidence becomes a decision, decisions become experiments, experiments create measured outcomes, and outcomes alter future strategy selection.
+
+## Free-first tool strategy
+The project now has a provider-neutral free-tool registry and fallback chains. The base stack avoids paid SaaS dependencies whenever a public API, RSS feed, open-source library, or free provider tier can do the job.
+
+### Research / trends
+- Hacker News official public API — no key; useful for technology/product demand signals.
+- Google Trends public RSS feeds — no paid API dependency for the base trend-discovery path.
+- Reddit RSS feeds — no API key for feed-based discovery where the feed is available and permitted.
+- YouTube/channel RSS where available — lightweight discovery fallback before spending API quota.
+- Generic RSS/Atom — universal fallback for publishers and niche sources.
+- Google Trends official API is kept as an optional future adapter because its current access is an alpha program rather than a universally open API.
+
+### AI
+The router is now free-first and supports separate credentials/models for OpenRouter, Gemini, Groq and Hugging Face, plus an explicit custom OpenAI-compatible fallback. OpenRouter free-model selection is discovered dynamically from its current catalog instead of hardcoding a model that may later stop being free.
+
+Free does **not** mean unlimited: quotas, model availability, provider terms and eligibility can change. The system therefore treats free providers as interchangeable resources with fallback and budget controls.
+
+### Browser / media
+Playwright and Crawlee are available as open-source automation/crawling choices. yt-dlp is available for permitted metadata/media workflows; platform terms and content rights remain mandatory gates.
 
 ## Intelligence layers
-- **Offer intelligence:** normalize network data, commission economics, recurring potential, AOV, cookie window, terms, countries and payout compatibility.
-- **Trend intelligence:** combine velocity, persistence, commercial intent, novelty, saturation and seasonality; merge duplicate signals across sources without treating them as independent evidence.
-- **Opportunity engine:** transparent dimensions, hard policy vetoes, confidence based on evidence completeness, risk-adjusted prioritization and explicit reasons/risks.
-- **Simulation lab:** conservative/base/optimistic scenarios and Monte Carlo uncertainty. Synthetic results are never presented as observed performance.
-- **Strategy evolution:** lineage-aware variants, controlled exploration/exploitation, uncertainty bonuses and retirement/promotion hooks.
-- **Attribution:** campaign/variant/content identifiers, clicks, conversions, commission and deterministic aggregate metrics such as CTR, CVR and EPC.
-- **Learning:** observed outcomes are kept separate from predictions and can recalibrate future prioritization without allowing one small sample to dominate.
-- **Durable workflow primitives:** explicit stages, retry state, terminal blocks and auditable transitions.
+- **Offer intelligence:** commission economics, recurring potential, AOV, cookie window, terms, countries and payout compatibility.
+- **Trend intelligence:** velocity, persistence, commercial intent, novelty, saturation and seasonality.
+- **Opportunity engine:** transparent dimensions, confidence, risk-adjusted prioritization and hard policy vetoes.
+- **Simulation lab:** conservative/base/optimistic scenarios and Monte Carlo uncertainty; synthetic results never become observed performance.
+- **Strategy evolution:** lineage-aware variants and controlled exploration/exploitation.
+- **Attribution:** campaign/variant/content identifiers, clicks, conversions, commission, CTR, CVR and EPC.
+- **Learning:** observed outcomes remain separate from predictions and small samples cannot dominate future decisions.
 
 ## Safety-first defaults
 - Default mode is `simulation`; no external publishing is performed.
-- `approval` mode prepares candidates but requires an explicit human approval step.
-- `autonomous` mode is the only mode allowed to invoke a configured publisher after every compliance/content gate passes.
+- `approval` requires explicit human approval.
+- `autonomous` can invoke a configured publisher only after every compliance/content gate passes.
 - Never fabricate clicks, conversions, commissions, trends, or profitability.
-- Affiliate terms, country eligibility, payout information and disclosure are decision inputs, not hidden assumptions.
-- External URLs are validated before provider requests.
-- Secrets are supplied through environment variables and are never committed.
-- Idempotent event/attribution writes prevent duplicate external events from becoming duplicate internal revenue.
+- Secrets stay in environment variables.
+- External URLs are validated and redirects are disabled at provider boundaries.
+- Provider failures should degrade to the next configured free/approved fallback rather than silently invent data.
 
-## Research-informed architecture
-The design deliberately favors first-party/provider APIs over brittle scraping. Awin documents publisher performance and transaction-oriented APIs; PartnerStack exposes marketplace/program APIs; Google is testing a programmatic Trends API with multi-year, regional and interval data; and modern agent systems increasingly separate agent reasoning from durable execution.
-
-Affiliate disclosure is a first-class content/compliance concern. The system therefore treats disclosure placement and eligibility as data and policy inputs rather than a final text afterthought.
-
-The adapter boundary also leaves room for newer partnership infrastructure. Impact.com, for example, documents program/partner discovery, analytics, tracking links, webhooks and an MCP interface in its 2026 API catalog.
-
-## Architecture
-- `apps/api` — FastAPI API and operational endpoints
-- `apps/web` — Arabic RTL operations dashboard
-- `core` — domain, intelligence, scoring, simulation, workflow, evolution, policies, compliance, persistence, learning, experiments and analytics
-- `integrations` — affiliate, AI, trend and publishing adapters
-- `tests` — deterministic unit and API contract tests
-- `.github/workflows` — CI on push/PR plus manual dispatch
+## API
+- `/health`
+- `/api/v1/dashboard/overview`
+- `/api/v1/tools/free`
+- `/api/v1/tools/fallback/{tool_id}`
+- `/api/v1/ai/free-models`
+- `/api/v1/ai/configured`
+- `/api/v1/opportunities/score`
+- `/api/v1/opportunities/assess`
+- `/api/v1/simulations/monte-carlo`
+- `/api/v1/analytics/attribution`
 
 ## Quick start
 ```bash
@@ -51,12 +65,10 @@ uvicorn apps.api.main:app --reload
 ```
 
 Dashboard: `/`  
-API docs: `/docs`  
-Health: `/health`  
-Operational overview: `/api/v1/dashboard/overview`
+API docs: `/docs`
 
 ## Configuration
-Copy `.env.example` to `.env` and keep `AFFILIATE_RUN_MODE=simulation` until provider credentials, payout compatibility, disclosure rules and publisher permissions have been verified. The application supports OpenAI-compatible AI endpoints and adapter-based affiliate/trend providers.
+Copy `.env.example` to `.env`. Keep `AFFILIATE_RUN_MODE=simulation` until provider credentials, payout compatibility, disclosure rules and publisher permissions are verified.
 
 ## Testing
 ```bash
@@ -64,9 +76,7 @@ python -m compileall -q core integrations apps tests
 pytest -q
 ```
 
-CI also runs these checks on GitHub Actions.
-
 ## Production path
-SQLite/WAL is the dependency-light persistence implementation; the service boundary is designed for PostgreSQL. Before real operation, add production authentication, secret management, webhook signature verification, provider-specific policy checks, observability/alerts, backup/restore procedures and verified publisher OAuth credentials. Real publishing remains an explicit side-effect boundary.
+SQLite/WAL is the dependency-light persistence implementation; the service boundary is designed for PostgreSQL. Production operation still requires authentication, secret management, signed webhooks, provider-specific policy checks, observability, backups and verified OAuth credentials.
 
 This is an automation and research platform, not a guarantee of income. Real-world results depend on offer terms, audience, traffic, platform policies and conversion performance.

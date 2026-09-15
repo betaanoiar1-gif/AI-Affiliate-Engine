@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from time import monotonic
 
@@ -30,8 +31,26 @@ class ToolHealth:
         return 1.0 if total == 0 else self.successes / total
 
 
+# A credential-required tool is only viable when its expected credential exists.
+# Keep this mapping explicit so selection never silently chooses an unusable adapter.
+CREDENTIAL_ENV: dict[str, tuple[str, ...]] = {
+    "awin": ("AWIN_API_KEY", "AWIN_TOKEN"),
+    "partnerstack": ("PARTNERSTACK_API_KEY", "PARTNERSTACK_TOKEN"),
+    "youtube_data_api": ("YOUTUBE_API_KEY", "YOUTUBE_DATA_API_KEY"),
+    "openrouter_free": ("OPENROUTER_API_KEY",),
+    "gemini_free": ("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    "groq_free": ("GROQ_API_KEY",),
+    "huggingface_free": ("HUGGINGFACE_API_KEY", "HF_TOKEN"),
+}
+
+
+def has_credentials(tool_id: str) -> bool:
+    names = CREDENTIAL_ENV.get(tool_id, ())
+    return bool(names) and any(bool(os.getenv(name, "").strip()) for name in names)
+
+
 class ToolRegistry:
-    """Chooses the cheapest viable tool first and keeps temporary provider failures local."""
+    """Chooses the cheapest *configured* viable tool and isolates temporary failures."""
 
     def __init__(self) -> None:
         self._health: dict[str, ToolHealth] = {}
@@ -53,23 +72,26 @@ class ToolRegistry:
         health.failures += 1
         health.cooldown_until = monotonic() + max(0.0, cooldown_seconds)
 
+    def _configured(self, spec: ToolSpec) -> bool:
+        return not spec.credentials or has_credentials(spec.id)
+
     def select(self, task: str, *, category: str | None = None, credentials: bool | None = None) -> ToolDecision:
         candidates = catalog(category=category)
         if credentials is not None:
             candidates = [item for item in candidates if item.credentials == credentials]
-        viable = [item for item in candidates if self.health(item.id).available]
+        viable = [item for item in candidates if self.health(item.id).available and self._configured(item)]
         if not viable:
-            raise RuntimeError("no viable tool is currently available")
+            raise RuntimeError("no configured and viable tool is currently available")
 
         cost_rank = {"free": 0, "free-tier": 1, "credential-required": 2, "paid-fallback": 3}
         viable.sort(key=lambda item: (cost_rank[item.cost], -self.health(item.id).reliability, 0 if item.cloud else 1, item.id))
         selected = viable[0]
-        chain = (selected.id, *selected.fallback)
+        chain = tuple(tool_id for tool_id in (selected.id, *selected.fallback) if self._configured(get_tool(tool_id)))
         return ToolDecision(
             task=task,
             selected=selected.id,
-            chain=chain,
-            reason=f"selected {selected.id}: cost={selected.cost}, reliability={self.health(selected.id).reliability:.2f}",
+            chain=chain or (selected.id,),
+            reason=f"selected {selected.id}: cost={selected.cost}, reliability={self.health(selected.id).reliability:.2f}, configured=true",
         )
 
     def snapshot(self) -> list[dict[str, object]]:
@@ -81,11 +103,12 @@ class ToolRegistry:
                 "category": spec.category,
                 "cost": spec.cost,
                 "credentials": spec.credentials,
+                "configured": self._configured(spec),
                 "cloud": spec.cloud,
                 "reliability": round(health.reliability, 4),
                 "successes": health.successes,
                 "failures": health.failures,
-                "available": health.available,
+                "available": health.available and self._configured(spec),
             })
         return rows
 
